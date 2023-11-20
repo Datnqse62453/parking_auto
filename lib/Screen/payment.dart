@@ -1,5 +1,5 @@
-
 import 'package:flutter/material.dart';
+import 'package:momo_vn/momo_vn.dart';
 
 class CheckOut extends StatefulWidget {
   const CheckOut({Key? key}) : super(key: key);
@@ -10,6 +10,31 @@ class CheckOut extends StatefulWidget {
 
 class _CheckOut extends State<CheckOut> {
   TextEditingController phoneController = TextEditingController();
+  late MomoVn _momoPay;
+  late PaymentResponse _momoPaymentResult;
+  late String _paymentStatus;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _momoPay = MomoVn();
+    _momoPay.on(MomoVn.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _momoPay.on(MomoVn.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _paymentStatus = "";
+    initPlatformState();
+  }
+
+  Future<void> initPlatformState() async {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _momoPay.clear();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,21 +50,82 @@ class _CheckOut extends State<CheckOut> {
             TextField(
               controller: phoneController,
               decoration: InputDecoration(labelText: "Phone number"),
-            //  keyboardType: TextInputType.phone,
+              //  keyboardType: TextInputType.phone,
             ),
             SizedBox(
               height: 10,
             ),
             ElevatedButton(
-                onPressed: () {
-
-                },
-                child: Text('payment')),
+              onPressed: () => _payment(
+                amount: 100000,
+                fee: 0,
+                description: "Mô tả",
+                username: "username",
+              ),
+              child: Text('payment'),
+            ),
+            Text(_paymentStatus.isEmpty ? 'CHƯA THANH TOÁN' : _paymentStatus)
           ],
         ),
       ),
     );
   }
 
-  
+  void _payment({
+    required int amount,
+    required int fee,
+    required String description,
+    required String? username,
+  }) {
+    final options = MomoPaymentInfo(
+      merchantName: 'a',
+      merchantNameLabel: 'a',
+      orderLabel: 'a',
+      partner: 'merchant',
+      appScheme: "MOMOIQA420180417",
+      merchantCode: 'MOMOIQA420180417',
+      partnerCode: 'MOMOIQA420180417',
+      amount: amount,
+      orderId: '123',
+      fee: fee,
+      description: description,
+      username: username,
+      // extra: "{}",
+      isTestMode: true,
+    );
+    try {
+      _momoPay.open(options);
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+
+  void _setState() {
+    _paymentStatus = 'Đã chuyển thanh toán';
+    if (_momoPaymentResult.isSuccess == true) {
+      _paymentStatus += "\nTình trạng: Thành công.";
+      _paymentStatus +=
+          "\nSố điện thoại: " + _momoPaymentResult.phoneNumber.toString();
+      _paymentStatus += "\nExtra: " + _momoPaymentResult.extra!;
+      _paymentStatus += "\nToken: " + _momoPaymentResult.token.toString();
+    } else {
+      _paymentStatus += "\nTình trạng: Thất bại.";
+      _paymentStatus += "\nExtra: " + _momoPaymentResult.extra.toString();
+      _paymentStatus += "\nMã lỗi: " + _momoPaymentResult.status.toString();
+    }
+  }
+
+  void _handlePaymentSuccess(PaymentResponse response) {
+    setState(() {
+      _momoPaymentResult = response;
+      _setState();
+    });
+  }
+
+  void _handlePaymentError(PaymentResponse response) {
+    setState(() {
+      _momoPaymentResult = response;
+      _setState();
+    });
+  }
 }
